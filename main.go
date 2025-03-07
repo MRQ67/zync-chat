@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,6 +23,14 @@ var (
 	// Map to store connected clients
 	clients = make(map[*websocket.Conn]bool)
 )
+
+var jwtSecret = []byte("7FADN3XFg3Xz7jPSuqoUsWsIxL2uLUGwPGOCjmomcCk=")
+
+// Claims for JWT
+type Claims struct {
+	Username string `json:"username"`
+	jwt.StandardClaims
+}
 
 // Handle WebSocket connections
 func handleConnections(w http.ResponseWriter, r *http.Request) {
