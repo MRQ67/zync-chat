@@ -1,9 +1,12 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
@@ -19,9 +22,9 @@ var (
 
 	// Mutex to protect the clients map
 	mutex sync.Mutex
-
+	db    *sql.DB
 	// Map to store connected clients
-	clients = make(map[*websocket.Conn]bool)
+	clients = make(map[*websocket.Conn]string)
 )
 
 var jwtSecret = []byte("7FADN3XFg3Xz7jPSuqoUsWsIxL2uLUGwPGOCjmomcCk=")
@@ -32,9 +35,88 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var user struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	err = RegisterUser(db, user.Username, user.Password)
+	if err != nil {
+		http.Error(w, "Registration failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var user struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	err = AuthenticateUser(db, user.Username, user.Password)
+	if err != nil {
+		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate JWT
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		Username: user.Username,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+}
+
 // Handle WebSocket connections
 func handleConnections(w http.ResponseWriter, r *http.Request) {
-	// Upgrade HTTP connection to WebSocket
+	tokenStr := r.URL.Query().Get("token")
+	if tokenStr == "" {
+		http.Error(w, "Missing token", http.StatusUnauthorized)
+		return
+	}
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Error upgrading to WebSocket:", err)
@@ -44,7 +126,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 	// Register the new client
 	mutex.Lock()
-	clients[conn] = true
+	clients[conn] = claims.Username
 	mutex.Unlock()
 
 	// Listen for messages from this client
@@ -60,29 +142,32 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Broadcast the message to all clients
-		broadcastMessage(message)
+		broadcastMessage(claims.Username + ": " + string(message))
 	}
 }
 
 // Broadcast message to all connected clients
-func broadcastMessage(message []byte) {
+func broadcastMessage(message string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	for client := range clients {
-		err := client.WriteMessage(websocket.TextMessage, message)
+	for conn := range clients {
+		err := conn.WriteMessage(websocket.TextMessage, []byte(message))
 		if err != nil {
 			log.Println("Error writing message:", err)
-			client.Close()
-			delete(clients, client)
+			conn.Close()
+			delete(clients, conn)
 		}
 	}
 }
 
 func main() {
+	db = initDB()
+	defer db.Close()
 	// Serve static files from the "static" folder
 	http.Handle("/", http.FileServer(http.Dir("static")))
-
+	http.HandleFunc("/register", registerHandler)
+	http.HandleFunc("/login", loginHandler)
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleConnections)
 
