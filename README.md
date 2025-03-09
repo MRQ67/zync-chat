@@ -26,7 +26,7 @@ To run the project locally, follow these steps:
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/yourusername/zync-chat.git
+   git clone https://github.com/MRQ67/zync-chat.git
    cd zync-chat
    ```
 
