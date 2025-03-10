@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -27,7 +28,7 @@ var (
 	clients = make(map[*websocket.Conn]string)
 )
 
-var jwtSecret = []byte("7FADN3XFg3Xz7jPSuqoUsWsIxL2uLUGwPGOCjmomcCk=")
+var jwtSecret []byte
 
 // Claims for JWT
 type Claims struct {
@@ -171,10 +172,18 @@ func main() {
 	// WebSocket endpoint
 	http.HandleFunc("/ws", handleConnections)
 
-	// Start the server
-	log.Println("Server starting on http://localhost:8080")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET environment variable not set")
 	}
+	jwtSecret = []byte(secret)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Fallback for local development
+	}
+
+	// Start the server
+	log.Println("Server started on :" + port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
