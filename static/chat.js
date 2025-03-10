@@ -58,6 +58,12 @@ function connectWebSocket(token) {
         const message = document.createElement('p');
         message.textContent = event.data;
         const messagesDiv = document.getElementById('messages');
+        messageDiv.classList.add('message', data.isSelf ? 'self' : 'other');
+        messageDiv.innerHTML = `
+            <div class="sender">${data.username}</div>
+            <div>${data.message}</div>
+            <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+        `;
         messagesDiv.appendChild(message);
         messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the latest message
     };
