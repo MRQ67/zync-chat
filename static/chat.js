@@ -50,13 +50,23 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
 // Connect to WebSocket with token
 function connectWebSocket(token) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
-    ws = new WebSocket(wsUrl);
-    ws.onopen = () => console.log("WebSocket connected");
-    ws.onmessage = handleMessage;
-    ws.onerror = () => console.error("WebSocket error");
-    ws.onclose = () => console.log("WebSocket closed");
+    ws = new WebSocket(`wss://${window.location.host}/ws?token=${token}`);
+    ws.onopen = () => {
+        console.log("WebSocket connected");
+    };
+    ws.onmessage = (event) => {
+        const message = document.createElement('p');
+        message.textContent = event.data;
+        const messagesDiv = document.getElementById('messages');
+        messagesDiv.appendChild(message);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the latest message
+    };
+    ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+    ws.onclose = () => {
+        console.log("WebSocket closed");
+    };
 }
 
 // Handle message sending
