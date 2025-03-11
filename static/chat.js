@@ -7,8 +7,15 @@ let currentUsername = null; // To track the logged-in user
 // Handle registration
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('regUsername').value;
-    const password = document.getElementById('regPassword').value;
+    const username = document.getElementById('regUsername')?.value.trim() || "";
+    const password = document.getElementById('regPassword')?.value.trim() || "";
+
+    console.log("Sending registration request:", { username, password });
+
+    if (!username || !password) {
+        alert("Username and password cannot be empty.");
+        return;
+    }
 
     const response = await fetch('/register', {
         method: 'POST',
@@ -52,30 +59,27 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
 // Connect to WebSocket with token
 function connectWebSocket(token) {
-    ws = new WebSocket(`wss://${window.location.host}/ws?token=${token}`);
-    ws.onopen = () => {
-        console.log("WebSocket connected");
-    };
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host; // e.g., localhost:8080 or zync-chat.onrender.com
+    const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+    console.log("Attempting to connect to:", wsUrl); // Debug the URL
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => console.log("WebSocket connected");
     ws.onmessage = (event) => {
-        // Parse the incoming message (assuming JSON format from the server)
         const data = JSON.parse(event.data);
-        const messageDiv = document.createElement('div'); // Use div for better styling control
-        const isSelf = data.username === currentUsername; // Check if the message is from the current user
+        const messageDiv = document.createElement('div');
+        const isSelf = data.username === currentUsername;
         messageDiv.classList.add('message', isSelf ? 'self' : 'other');
-        messageDiv.innerHTML = `
+        messageDiv.innerHTML = `    
             <div class="sender">${data.username}</div>
             <div>${data.message}</div>
             <div class="timestamp">${new Date(data.timestamp).toLocaleTimeString()}</div>
         `;
         messagesDiv.appendChild(messageDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the latest message
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     };
-    ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-    };
-    ws.onclose = () => {
-        console.log("WebSocket closed");
-    };
+    ws.onerror = (error) => console.error("WebSocket error:", error);
+    ws.onclose = () => console.log("WebSocket closed");
 }
 
 // Handle message sending

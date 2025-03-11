@@ -36,6 +36,12 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+type Message struct {
+	Username  string `json:"username"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"` // Optional, for client-side display
+}
+
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -52,13 +58,23 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//log.Printf("Attempting to register: username='%s', password='%s'", user.Username, user.Password)
+
+	if user.Username == "" {
+		log.Println("Empty username received")
+		http.Error(w, "Username cannot be empty", http.StatusBadRequest)
+		return
+	}
+
 	err = RegisterUser(db, user.Username, user.Password)
 	if err != nil {
+		log.Println("Registration error:", err)
 		http.Error(w, "Registration failed", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	log.Println("User registered successfully:", user.Username)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -131,31 +147,37 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	// Listen for messages from this client
+	username := clients[conn] // Assuming username is stored in clients map
 	for {
-		_, message, err := conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
-			// Remove client on disconnect
 			mutex.Lock()
 			delete(clients, conn)
 			mutex.Unlock()
 			break
 		}
-
-		// Broadcast the message to all clients
-		broadcastMessage(claims.Username + ": " + string(message))
+		broadcastMessage(username, string(msg))
 	}
 }
 
 // Broadcast message to all connected clients
-func broadcastMessage(message string) {
+func broadcastMessage(username, message string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-
+	msg := Message{
+		Username:  username,
+		Message:   message,
+		Timestamp: time.Now().Format(time.RFC3339), // ISO 8601 format
+	}
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Println("JSON marshal error:", err)
+		return
+	}
 	for conn := range clients {
-		err := conn.WriteMessage(websocket.TextMessage, []byte(message))
+		err := conn.WriteMessage(websocket.TextMessage, msgBytes)
 		if err != nil {
-			log.Println("Error writing message:", err)
+			log.Println("Write error:", err)
 			conn.Close()
 			delete(clients, conn)
 		}
