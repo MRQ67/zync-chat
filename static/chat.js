@@ -50,7 +50,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         // const currentUsername = data.username; // Store the logged-in username
         localStorage.setItem('token', token); // Store token
         authDiv.style.display = 'none';
-        chatDiv.style.display = 'block';
+        chatDiv.style.display = 'flex';
         document.getElementById('username').textContent = document.getElementById('loginUsername').value;
         connectWebSocket(token);
         e.target.reset();
@@ -72,7 +72,7 @@ function connectWebSocket(token) {
         const messageDiv = document.createElement('div');
         const isSelf = data.username === currentUsername;
         messageDiv.classList.add('message', isSelf ? 'self' : 'other');
-        messageDiv.innerHTML = `    
+        messageDiv.innerHTML = `        
             <div class="sender">${data.username}</div>
             <div>${data.message}</div>
             <div class="timestamp">${new Date(data.timestamp).toLocaleTimeString()}</div>

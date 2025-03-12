@@ -60,7 +60,7 @@ body {
 }
 
 #chat {
-    display: none;
+    display: none; /* Toggled to flex in JS */
     flex-direction: column;
     width: 100%;
     max-width: 800px;
@@ -68,10 +68,10 @@ body {
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
 }
 
 header {
+    flex-shrink: 0;
     background-color: var(--primary-color);
     color: white;
     padding: 10px 20px;
@@ -124,6 +124,7 @@ header h1 {
 }
 
 #messageForm {
+    flex-shrink: 0;
     display: flex;
     padding: 10px;
     background-color: #f1f1f1;
