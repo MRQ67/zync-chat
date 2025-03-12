@@ -2,6 +2,7 @@ let ws = null;
 const authDiv = document.getElementById('auth');
 const chatDiv = document.getElementById('chat');
 const messagesDiv = document.getElementById('messages');
+// const Username = document.getElementById('username');
 let currentUsername = null; // To track the logged-in user
 
 // Handle registration
@@ -46,10 +47,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     if (response.ok) {
         const data = await response.json();
         const token = data.token;
-        currentUsername = username; // Store the logged-in username
+        // const currentUsername = data.username; // Store the logged-in username
         localStorage.setItem('token', token); // Store token
         authDiv.style.display = 'none';
         chatDiv.style.display = 'block';
+        document.getElementById('username').textContent = document.getElementById('loginUsername').value;
         connectWebSocket(token);
         e.target.reset();
     } else {
