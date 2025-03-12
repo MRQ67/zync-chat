@@ -5,6 +5,8 @@ Zync Chat is a real-time chat application that allows users to register, log in,
 ## Website Sample
 ![](images/chat_sample.png)
 
+*Note: The website is hosted on render free instance, it will some time to lanuch if it is inactive*
+
 ## Features
 
 - User registration and authentication
