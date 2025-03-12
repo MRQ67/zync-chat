@@ -2,6 +2,9 @@
 
 Zync Chat is a real-time chat application that allows users to register, log in, and communicate with each other instantly. Built with Go for the backend and a simple web interface for the frontend, it provides a seamless chat experience.
 
+## Website Sample
+![](images/chat_sample.png)
+
 ## Features
 
 - User registration and authentication
